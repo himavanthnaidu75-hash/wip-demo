@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>W.I.P — Work In Progress | Premium Freelance Design & Development Studio</title>
+  <meta name="description" content="W.I.P is a premium freelance creative studio crafting stunning websites, brands, and digital products. We turn your work-in-progress into a finished masterpiece.">
+  <meta name="keywords" content="freelance web designer, freelance developer, branding studio, premium website design, UI/UX design, landing page design, startup design agency, 3D web design">
+  <meta name="author" content="W.I.P — Work In Progress">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://wip.studio/">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://wip.studio/">
+  <meta property="og:title" content="W.I.P — Work In Progress | Premium Freelance Studio">
+  <meta property="og:description" content="We turn your work-in-progress into a finished masterpiece. Stunning websites, brands, and digital products.">
+  <meta property="og:image" content="https://picsum.photos/seed/wip-og/1200/630.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="W.I.P — Work In Progress">
+  <meta name="twitter:description" content="Premium freelance creative studio building stunning websites, brands, and digital products.">
+  <meta name="twitter:image" content="https://picsum.photos/seed/wip-og/1200/630.jpg">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"ProfessionalService","name":"W.I.P — Work In Progress","url":"https://wip.studio","description":"Premium freelance creative studio building stunning websites, brands, and digital products.","priceRange":"$$","serviceType":["Web Design","Web Development","Brand Identity","UI/UX Design"],"areaServed":"Worldwide"}
+  </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How long does a typical project take?","acceptedAnswer":{"@type":"Answer","text":"Most projects take 2-6 weeks. Landing pages in 5-7 days, full websites in 3-6 weeks."}},{"@type":"Question","name":"What is your pricing?","acceptedAnswer":{"@type":"Answer","text":"Starter $999, Professional $2,499, Enterprise custom. Every project includes design, development, and revisions."}},{"@type":"Question","name":"Do you offer ongoing support?","acceptedAnswer":{"@type":"Answer","text":"Yes. Every plan includes 30-60 days of post-launch support. Monthly retainer plans also available."}}]}
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter','sans-serif'], serif: ['Playfair Display','serif'] } } } }
+  </script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    ::selection{background:#FBC2D1;color:#1C1917}
+    ::-webkit-scrollbar{width:6px}
+    ::-webkit-scrollbar-track{background:#0a0a0a}
+    ::-webkit-scrollbar-thumb{background:#333;border-radius:10px}
+    ::-webkit-scrollbar-thumb:hover{background:#555}
+    *{cursor:none}
+    .noise{position:fixed;inset:0;z-index:10000;pointer-events:none;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-repeat:repeat;background-size:256px}
+    #loader{position:fixed;inset:0;z-index:9999;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .8s ease,visibility .8s ease}
+    #loader.hidden{opacity:0;visibility:hidden}
+    #loader .loader-logo{font-family:'Playfair Display',serif;font-size:3rem;color:white;opacity:0;transform:scale(.8);transition:all .8s cubic-bezier(.2,.8,.2,1)}
+    #loader .loader-logo.show{opacity:1;transform:scale(1)}
+    #loader .loader-bar{width:120px;height:1px;background:#222;margin-top:2rem;overflow:hidden;border-radius:1px}
+    #loader .loader-fill{height:100%;width:0;background:linear-gradient(90deg,#FBC2D1,#B86E8A);transition:width .1s linear;border-radius:1px}
+    #loader .loader-pct{color:#555;font-size:.7rem;letter-spacing:.2em;margin-top:1rem;font-weight:500}
+    .cursor-dot{position:fixed;width:6px;height:6px;background:white;border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:width .3s,height .3s,background .3s;mix-blend-mode:difference}
+    .cursor-dot.hover{width:50px;height:50px;background:#FBC2D1;mix-blend-mode:normal}
+    .cursor-ring{position:fixed;width:40px;height:40px;border:1px solid rgba(255,255,255,.2);border-radius:50%;pointer-events:none;z-index:9997;transform:translate(-50%,-50%);transition:width .4s cubic-bezier(.2,.8,.2,1),height .4s cubic-bezier(.2,.8,.2,1),border-color .3s}
+    .cursor-ring.hover{width:60px;height:60px;border-color:rgba(251,194,209,.5)}
+    .char{display:inline-block;opacity:0;transform:translateY(60px) rotateX(-60deg);transition:opacity .7s cubic-bezier(.2,.8,.2,1),transform .7s cubic-bezier(.2,.8,.2,1)}
+    .char.visible{opacity:1;transform:translateY(0) rotateX(0)}
+    .reveal{opacity:0;transform:translateY(40px);filter:blur(8px);transition:all 1s cubic-bezier(.2,.8,.2,1)}
+    .reveal.vis{opacity:1;transform:translateY(0);filter:blur(0)}
+    .reveal-d1{transition-delay:.1s}.reveal-d2{transition-delay:.2s}.reveal-d3{transition-delay:.3s}.reveal-d4{transition-delay:.4s}.reveal-d5{transition-delay:.5s}.reveal-d6{transition-delay:.6s}
+    .tilt-card{transition:transform .15s ease-out,box-shadow .3s ease;transform-style:preserve-3d;will-change:transform}
+    .tilt-card .tilt-glare{position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s;mix-blend-mode:overlay;background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.15),transparent 60%)}
+    .tilt-card:hover .tilt-glare{opacity:1}
+    .spotlight-card{position:relative;overflow:hidden}
+    .spotlight-card::before{content:'';position:absolute;inset:0;border-radius:inherit;opacity:0;transition:opacity .4s;pointer-events:none;z-index:1}
+    .spotlight-card:hover::before{opacity:1}
+    .magnetic{transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+    .marquee-track{display:flex;animation:marquee 25s linear infinite;width:max-content}
+    @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+    .faq-answer{max-height:0;overflow:hidden;transition:max-height .5s cubic-bezier(.2,.8,.2,1),padding .3s}
+    .faq-answer.open{max-height:300px}
+    .faq-icon{transition:transform .4s cubic-bezier(.2,.8,.2,1)}
+    .faq-item.active .faq-icon{transform:rotate(45deg)}
+    .nav-link{position:relative}
+    .nav-link::after{content:'';position:absolute;bottom:-2px;left:0;width:0;height:1px;background:white;transition:width .3s ease}
+    .nav-link:hover::after{width:100%}
+    .demo-card{transition:transform .5s cubic-bezier(.2,.8,.2,1),box-shadow .5s ease}
+    .demo-card:hover{transform:translateY(-8px) scale(1.01);box-shadow:0 30px 80px -20px rgba(0,0,0,.3)}
+    .demo-card:hover .demo-overlay{opacity:1}
+    .demo-card:hover .demo-img{transform:scale(1.08)}
+    .service-card{transition:all .5s cubic-bezier(.2,.8,.2,1)}
+    .service-card:hover{border-color:rgba(251,194,209,.3);background:rgba(251,194,209,.03)}
+    .service-card:hover .s-icon{background:#FBC2D1;color:#1C1917}
+    .pricing-card{transition:all .5s cubic-bezier(.2,.8,.2,1)}
+    .pricing-card:hover{transform:translateY(-6px)}
+    .process-card{transition:all .6s cubic-bezier(.2,.8,.2,1)}
+    .process-card:hover{background:#FBC2D1;transform:translateY(-4px)}
+    .process-card:hover .p-num{color:rgba(255,255,255,.15)}
+    .process-card:hover .p-text{color:rgba(255,255,255,.8)}
+    .mobile-menu{transform:translateX(100%);transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+    .mobile-menu.open{transform:translateX(0)}
+    .toast{transform:translateY(100px);opacity:0;transition:all .4s cubic-bezier(.2,.8,.2,1)}
+    .toast.show{transform:translateY(0);opacity:1}
+    .gradient-text{background:linear-gradient(135deg,#FBC2D1,#B86E8A,#D4A0B9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    #three-canvas{position:absolute;inset:0;z-index:0}
+    .hero-content{position:relative;z-index:2}
+    @media(max-width:768px){
+      .cursor-dot,.cursor-ring{display:none}
+      *{cursor:auto}
+    }
+  </style>
+</head>
+<body class="bg-[#0a0a0a] text-white font-sans antialiased overflow-x-hidden">
+
+  <!-- NOISE OVERLAY -->
+  <div class="noise"></div>
+
+  <!-- LOADER -->
+  <div id="loader">
+    <div class="loader-logo" id="loaderLogo">W.I.P</div>
+    <div class="loader-bar"><div class="loader-fill" id="loaderFill"></div></div>
+    <div class="loader-pct" id="loaderPct">0%</div>
+  </div>
+
+  <!-- CUSTOM CURSOR -->
+  <div class="cursor-dot" id="cursorDot"></div>
+  <div class="cursor-ring" id="cursorRing"></div>
+
+  <!-- MOBILE MENU -->
+  <div id="mobileMenu" class="mobile-menu fixed inset-0 z-[60] bg-[#0a0a0a]">
+    <div class="p-6 flex justify-between items-center">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center"><span class="text-[#0a0a0a] text-xs font-bold">W</span></div>
+        <span class="font-semibold text-sm tracking-wide">W.I.P</span>
+      </div
