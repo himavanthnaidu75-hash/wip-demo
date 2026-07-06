@@ -2,206 +2,30 @@ name: Daily Lead Generation
 
 on:
   schedule:
-    - cron: '0 13 * * 1-5'
+    # 6:30 PM IST = 13:00 UTC weekdays
+    - cron: '30 13 * * 1-5'
   workflow_dispatch:
 
 jobs:
   lead-gen:
-    name: Find & Email Leads
+    name: Find & Email Restaurant Leads
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install deps
-        run: |
-          mkdir -p backend
-          cd backend
-          cat > package.json << 'PKGEOF'
-{
-  "name": "lead-gen",
-  "version": "1.0.0",
-  "type": "module",
-  "dependencies": {
-    "express": "^4.19.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "googleapis": "^140.0.1",
-    "nodemailer": "^6.9.14",
-    "axios": "^1.7.2"
-  }
-}
-PKGEOF
-          npm install
-      - name: Run Lead Gen
+      - name: Install dependencies
+        run: npm install googleapis
+      - name: Run lead generation
         env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
           GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
           GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
           SHEETS_ID: ${{ secrets.SHEETS_ID }}
-          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
           BACKEND_URL: ${{ secrets.BACKEND_URL }}
-          DEMO_URL: ${{ secrets.DEMO_URL }}
-        run: |
-          cd backend
-          cat > leadgen.js << 'JSEOF'
-import { google } from 'googleapis';
-import { createTransport } from 'nodemailer';
-import axios from 'axios';
-import dns from 'dns/promises';
-
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GMAIL_CLIENT_ID,
-  process.env.GMAIL_CLIENT_SECRET
-);
-oauth2Client.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
-
-const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
-
-async function getTransporter() {
-  const { token } = await oauth2Client.getAccessToken();
-  return createTransport({
-    service: 'gmail',
-    auth: { type: 'OAuth2', user: process.env.GMAIL_USER, accessToken: token }
-  });
-}
-
-async function appendToSheet(tab, values) {
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: process.env.SHEETS_ID,
-    range: `${tab}!A:Z`,
-    valueInputOption: 'RAW',
-    requestBody: { values: [values] }
-  });
-}
-
-async function verifyMX(email) {
-  try {
-    const domain = email.split('@')[1];
-    const records = await dns.resolveMx(domain);
-    return records.length > 0;
-  } catch { return false; }
-}
-
-async function searchRestaurants(city, cuisine) {
-  const query = `${cuisine} restaurant ${city} USA`;
-  const { data } = await axios.get('https://maps.googleapis.com/maps/api/place/textsearch/json', {
-    params: { query, key: process.env.GOOGLE_MAPS_API_KEY }
-  });
-  return data.results?.slice(0, 10).map(r => ({
-    name: r.name,
-    address: r.formatted_address,
-    place_id: r.place_id,
-    rating: r.rating,
-    reviews: r.user_ratings_total
-  })) || [];
-}
-
-async function getPlaceDetails(placeId) {
-  const { data } = await axios.get('https://maps.googleapis.com/maps/api/place/details/json', {
-    params: {
-      place_id: placeId,
-      fields: 'website,formatted_phone_number',
-      key: process.env.GOOGLE_MAPS_API_KEY
-    }
-  });
-  return data.result;
-}
-
-async function extractEmailFromWebsite(url) {
-  try {
-    const { data: html } = await axios.get(url, { timeout: 8000 });
-    const match = html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/i);
-    return match ? match[0] : null;
-  } catch { return null; }
-}
-
-async function sendEmail(lead, template) {
-  const transporter = await getTransporter();
-  const pixel = `${process.env.BACKEND_URL}/api/track/open?lead=${encodeURIComponent(lead.email)}`;
-  const link = `${process.env.BACKEND_URL}/api/track/click?lead=${encodeURIComponent(lead.email)}&url=${encodeURIComponent(process.env.DEMO_URL)}`;
-
-  const html = template
-    .replace('{{name}}', lead.name)
-    .replace('{{business}}', lead.business)
-    .replace('{{city}}', lead.city)
-    .replace('{{tracking_pixel}}', `<img src="${pixel}" width="1" height="1" />`)
-    .replace('{{demo_link}}', `<a href="${link}">${process.env.DEMO_URL}</a>`);
-
-  await transporter.sendMail({
-    from: `WIP Websites <${process.env.GMAIL_USER}>`,
-    to: lead.email,
-    subject: `Cinematic website for ${lead.business} in ${lead.city} — $299`,
-    html
-  });
-}
-
-const cities = ['Austin', 'Denver', 'Nashville', 'Portland', 'San Diego', 'Miami', 'Charlotte', 'Tampa', 'Phoenix', 'Dallas'];
-const cuisines = ['italian', 'mexican', 'japanese', 'farm-to-table', 'craft-cocktail'];
-
-const template = `
-  <p>Hi {{name}},</p>
-  <p>Saw {{business}} in {{city}} — great reviews, solid vibe.</p>
-  <p>We build cinematic restaurant websites that actually convert: $299 (Starter), $499 (Growth), $999 (Premium).</p>
-  <p>See our demo: {{demo_link}} {{tracking_pixel}}</p>
-  <p>Best,<br>WIP Team</p>
-`;
-
-for (const city of cities) {
-  for (const cuisine of cuisines) {
-    const places = await searchRestaurants(city, cuisine);
-    for (const place of places) {
-      if ((place.reviews || 0) < 100 || (place.rating || 0) < 4.0) continue;
-      const details = await getPlaceDetails(place.place_id);
-      const website = details?.website;
-      if (!website) continue;
-
-      const email = await extractEmailFromWebsite(website);
-      if (!email || !await verifyMX(email)) continue;
-
-      const lead = {
-        name: place.name.split(' ')[0],
-        business: place.name,
-        city,
-        email,
-        website,
-        phone: details?.formatted_phone_number || '',
-        cuisine
-      };
-
-      await appendToSheet('Leads', [
-        new Date().toISOString(),
-        lead.email,
-        lead.business,
-        lead.city,
-        lead.cuisine,
-        lead.website,
-        lead.phone,
-        'pending'
-      ]);
-
-      try {
-        await sendEmail(lead, template);
-        await appendToSheet('Sent', [
-          new Date().toISOString(),
-          lead.email,
-          lead.business,
-          lead.city,
-          'sent'
-        ]);
-      } catch (err) {
-        console.error('Send failed:', err.message);
-      }
-
-      await new Promise(r => setTimeout(r, 2000));
-    }
-  }
-}
-
-console.log('Lead gen complete');
-JSEOF
-          node leadgen.js
+        run: node .github/scripts/lead-gen.mjs

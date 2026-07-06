@@ -1,4 +1,4 @@
-name: Track Replies
+name: Track Gmail Replies
 
 on:
   schedule:
@@ -6,102 +6,22 @@ on:
   workflow_dispatch:
 
 jobs:
-  track:
-    name: Check Gmail Replies
+  check-replies:
+    name: Check for Email Replies
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install deps
-        run: |
-          mkdir -p backend
-          cd backend
-          cat > package.json << 'PKGEOF'
-{
-  "name": "track-replies",
-  "version": "1.0.0",
-  "type": "module",
-  "dependencies": {
-    "googleapis": "^140.0.1"
-  }
-}
-PKGEOF
-          npm install
-      - name: Check Replies
+      - name: Install dependencies
+        run: npm install googleapis
+      - name: Check replies
         env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
           GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
           GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
-          GMAIL_USER: ${{ secrets.GMAIL_USER }}
           SHEETS_ID: ${{ secrets.SHEETS_ID }}
-        run: |
-          cd backend
-          cat > track.js << 'JSEOF'
-import { google } from 'googleapis';
-
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GMAIL_CLIENT_ID,
-  process.env.GMAIL_CLIENT_SECRET
-);
-oauth2Client.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
-
-const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
-const SHEETS_ID = process.env.SHEETS_ID;
-
-async function getSentEmails() {
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEETS_ID,
-    range: 'Sent!A:Z'
-  });
-  return res.data.values || [];
-}
-
-async function checkRepliesFor(email) {
-  const res = await gmail.users.messages.list({
-    userId: 'me',
-    q: `from:${email} newer_than:7d`,
-    maxResults: 5
-  });
-  return res.data.messages || [];
-}
-
-async function updateSentRow(rowIndex, status) {
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: SHEETS_ID,
-    range: `Sent!H${rowIndex + 1}`,
-    valueInputOption: 'RAW',
-    requestBody: { values: [[status]] }
-  });
-}
-
-async function logReply(email, snippet) {
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: SHEETS_ID,
-    range: 'Replied!A:Z',
-    valueInputOption: 'RAW',
-    requestBody: { values: [[new Date().toISOString(), email, snippet]] }
-  });
-}
-
-const sentRows = await getSentEmails();
-for (let i = 0; i < sentRows.length; i++) {
-  const [, email, business, city, status] = sentRows[i];
-  if (status === 'replied' || status === 'converted') continue;
-
-  const messages = await checkRepliesFor(email);
-  if (messages.length > 0) {
-    const msg = await gmail.users.messages.get({ userId: 'me', id: messages[0].id });
-    const snippet = msg.data.snippet || '';
-    await updateSentRow(i, 'replied');
-    await logReply(email, snippet);
-    console.log(`Reply from ${email}: ${snippet}`);
-  }
-}
-
-console.log('Reply tracking complete');
-JSEOF
-          node track.js
+        run: node .github/scripts/track-replies.mjs

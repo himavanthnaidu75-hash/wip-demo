@@ -1,1 +1,27 @@
+node_modules/
+.env
+*.log
+npm-debug.log*
+.next/
 .vercel
+out/
+/build
+
+# frontend specific
+frontend/node_modules
+frontend/.next
+frontend/.vercel
+frontend/out
+
+# backend specific
+backend/node_modules
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

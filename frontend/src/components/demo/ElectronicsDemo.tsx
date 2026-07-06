@@ -253,15 +253,38 @@ export default function ElectronicsDemo() {
             </div>
           </ScrollReveal>
 
-          {/* Price */}
+          {/* Pricing Tiers */}
           <ScrollReveal delay={0.1}>
-            <div className="text-center mb-10">
-              <p className="text-4xl md:text-5xl font-bold text-white tracking-tight">
-                $999
-              </p>
-              <p className="text-white/30 text-sm mt-2">
-                Starting price · Free shipping
-              </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+              {[
+                { name: 'Starter', storage: '256GB', price: '$299', desc: 'Essential performance' },
+                { name: 'Growth', storage: '512GB', price: '$499', desc: 'Pro-grade power' },
+                { name: 'Premium', storage: '1TB', price: '$999', desc: 'Unlimited everything' },
+              ].map((tier) => (
+                <motion.div
+                  key={tier.name}
+                  whileHover={{ scale: 1.02, y: -4 }}
+                  className={`relative p-6 rounded-2xl border cursor-pointer transition-all ${
+                    selectedStorage === tier.storage
+                      ? 'border-amber-500/50 bg-amber-500/10 shadow-lg shadow-amber-500/10'
+                      : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'
+                  }`}
+                  onClick={() => setSelectedStorage(tier.storage)}
+                >
+                  <p className="text-xs uppercase tracking-widest text-amber-400/80 mb-1 font-medium">{tier.name}</p>
+                  <p className="text-3xl md:text-4xl font-bold text-white">{tier.price}</p>
+                  <p className="text-white/40 text-sm mt-1">{tier.storage} · {tier.desc}</p>
+                  {selectedStorage === tier.storage && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute top-3 right-3 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center"
+                    >
+                      <svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                    </motion.div>
+                  )}
+                </motion.div>
+              ))}
             </div>
           </ScrollReveal>
 
