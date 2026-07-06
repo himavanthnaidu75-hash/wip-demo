@@ -1,0 +1,739 @@
+name: Deploy Frontend & Backend
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  BUN_VERSION: '1.1'
+
+jobs:
+  deploy-frontend:
+    name: Deploy Frontend to Vercel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: cd frontend && bun install --frozen-lockfile
+
+      - name: Build frontend
+        run: cd frontend && bun run build
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        if: ${{ secrets.VERCEL_TOKEN != '' }}
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: ./frontend
+
+  deploy-backend:
+    name: Deploy Backend to Render
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install backend dependencies
+        run: |
+          mkdir -p backend
+          cd backend
+          cat > package.json << 'EOF'
+{
+  "name": "wip-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "googleapis": "^140.0.1",
+    "nodemailer": "^6.9.14",
+    "axios": "^1.7.2"
+  }
+}
+EOF
+          npm install
+
+      - name: Create backend server
+        run: |
+          cd backend
+          cat > server.js << 'EOF'
+import express from 'express';
+import cors from 'cors';
+import { createTransport } from 'nodemailer';
+import { google } from 'googleapis';
+import dns from 'dns/promises';
+import axios from 'axios';
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const PORT = process.env.PORT || 3001;
+const GMAIL_USER = process.env.GMAIL_USER;
+const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
+const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
+const GMAIL_REFRESH_TOKEN = process.env.GMAIL_REFRESH_TOKEN;
+const SHEETS_ID = process.env.SHEETS_ID;
+const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+
+const oauth2Client = new google.auth.OAuth2(
+  GMAIL_CLIENT_ID,
+  GMAIL_CLIENT_SECRET
+);
+oauth2Client.setCredentials({ refresh_token: GMAIL_REFRESH_TOKEN });
+
+async function getGmailTransporter() {
+  const { token } = await oauth2Client.getAccessToken();
+  return createTransport({
+    service: 'gmail',
+    auth: { type: 'OAuth2', user: GMAIL_USER, accessToken: token }
+  });
+}
+
+const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
+
+async function appendToSheet(tab, values) {
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SHEETS_ID,
+    range: `${tab}!A:Z`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [values] }
+  });
+}
+
+async function findRowByEmail(tab, email) {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEETS_ID,
+    range: `${tab}!A:Z`
+  });
+  const rows = res.data.values || [];
+  return rows.findIndex(r => r[1] === email);
+}
+
+async function updateSheetRow(tab, rowIndex, values) {
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SHEETS_ID,
+    range: `${tab}!A${rowIndex + 1}:Z${rowIndex + 1}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [values] }
+  });
+}
+
+async function verifyMX(email) {
+  try {
+    const domain = email.split('@')[1];
+    const records = await dns.resolveMx(domain);
+    return records.length > 0;
+  } catch { return false; }
+}
+
+async function searchRestaurants(city, cuisine) {
+  const query = `${cuisine} restaurant ${city} USA`;
+  const { data } = await axios.get('https://maps.googleapis.com/maps/api/place/textsearch/json', {
+    params: { query, key: GOOGLE_MAPS_API_KEY }
+  });
+  return data.results?.slice(0, 10).map(r => ({
+    name: r.name,
+    address: r.formatted_address,
+    place_id: r.place_id,
+    rating: r.rating,
+    reviews: r.user_ratings_total
+  })) || [];
+}
+
+async function getPlaceDetails(placeId) {
+  const { data } = await axios.get('https://maps.googleapis.com/maps/api/place/details/json', {
+    params: {
+      place_id: placeId,
+      fields: 'website,formatted_phone_number',
+      key: GOOGLE_MAPS_API_KEY
+    }
+  });
+  return data.result;
+}
+
+async function extractEmailFromWebsite(url) {
+  try {
+    const { data: html } = await axios.get(url, { timeout: 8000 });
+    const match = html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/i);
+    return match ? match[0] : null;
+  } catch { return null; }
+}
+
+async function sendColdEmail(lead, template) {
+  const transporter = await getGmailTransporter();
+  const trackingPixel = `${process.env.BACKEND_URL}/api/track/open?lead=${encodeURIComponent(lead.email)}`;
+  const trackingLink = `${process.env.BACKEND_URL}/api/track/click?lead=${encodeURIComponent(lead.email)}&url=${encodeURIComponent(process.env.DEMO_URL)}`;
+
+  const html = template
+    .replace('{{name}}', lead.name)
+    .replace('{{business}}', lead.business)
+    .replace('{{city}}', lead.city)
+    .replace('{{tracking_pixel}}', `<img src="${trackingPixel}" width="1" height="1" />`)
+    .replace('{{demo_link}}', `<a href="${trackingLink}">${process.env.DEMO_URL}</a>`);
+
+  await transporter.sendMail({
+    from: `WIP Websites <${GMAIL_USER}>`,
+    to: lead.email,
+    subject: `Cinematic website for ${lead.business} in ${lead.city} — $299`,
+    html
+  });
+}
+
+async function runLeadGen() {
+  const cities = ['Austin', 'Denver', 'Nashville', 'Portland', 'San Diego', 'Miami', 'Charlotte', 'Tampa', 'Phoenix', 'Dallas'];
+  const cuisines = ['italian', 'mexican', 'japanese', 'farm-to-table', 'craft-cocktail'];
+
+  const template = `
+    <p>Hi {{name}},</p>
+    <p>Saw {{business}} in {{city}} — great reviews, solid vibe.</p>
+    <p>We build cinematic restaurant websites that actually convert: $299 (Starter), $499 (Growth), $999 (Premium).</p>
+    <p>See our demo: {{demo_link}} {{tracking_pixel}}</p>
+    <p>Best,<br>WIP Team</p>
+  `;
+
+  for (const city of cities) {
+    for (const cuisine of cuisines) {
+      const places = await searchRestaurants(city, cuisine);
+      for (const place of places) {
+        if ((place.reviews || 0) < 100 || (place.rating || 0) < 4.0) continue;
+
+        const details = await getPlaceDetails(place.place_id);
+        const website = details?.website;
+        if (!website) continue;
+
+        const email = await extractEmailFromWebsite(website);
+        if (!email || !await verifyMX(email)) continue;
+
+        const lead = {
+          name: place.name.split(' ')[0],
+          business: place.name,
+          city,
+          email,
+          website,
+          phone: details?.formatted_phone_number || '',
+          cuisine,
+          pricing_tier: 'starter'
+        };
+
+        await appendToSheet('Leads', [
+          new Date().toISOString(),
+          lead.email,
+          lead.business,
+          lead.city,
+          lead.cuisine,
+          lead.website,
+          lead.phone,
+          'pending'
+        ]);
+
+        try {
+          await sendColdEmail(lead, template);
+          await appendToSheet('Sent', [
+            new Date().toISOString(),
+            lead.email,
+            lead.business,
+            lead.city,
+            'sent'
+          ]);
+        } catch (err) {
+          console.error('Send failed:', err.message);
+        }
+
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+  }
+}
+
+app.get('/api/health', (req, res) => res.json({ ok: true }));
+
+app.get('/api/track/open', async (req, res) => {
+  const { lead } = req.query;
+  const row = await findRowByEmail('Sent', lead);
+  if (row >= 0) {
+    const current = await sheets.spreadsheets.values.get({ spreadsheetId: SHEETS_ID, range: `Sent!A${row+1}:Z${row+1}` });
+    await updateSheetRow('Sent', row, [...current.data.values[0], 'opened']);
+  }
+  res.set('Content-Type', 'image/gif').send(Buffer.from('R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==', 'base64'));
+});
+
+app.get('/api/track/click', async (req, res) => {
+  const { lead, url } = req.query;
+  const row = await findRowByEmail('Sent', lead);
+  if (row >= 0) {
+    const current = await sheets.spreadsheets.values.get({ spreadsheetId: SHEETS_ID, range: `Sent!A${row+1}:Z${row+1}` });
+    await updateSheetRow('Sent', row, [...current.data.values[0], 'clicked']);
+  }
+  res.redirect(url || process.env.DEMO_URL);
+});
+
+app.post('/api/webhook/gmail', async (req, res) => {
+  const { message } = req.body;
+  if (message) {
+    const email = message.payload.headers.find(h => h.name === 'From')?.value;
+    const row = await findRowByEmail('Sent', email);
+    if (row >= 0) {
+      const current = await sheets.spreadsheets.values.get({ spreadsheetId: SHEETS_ID, range: `Sent!A${row+1}:Z${row+1}` });
+      await updateSheetRow('Sent', row, [...current.data.values[0], 'replied']);
+      await appendToSheet('Replied', [new Date().toISOString(), email, message.snippet]);
+    }
+  }
+  res.json({ ok: true });
+});
+
+app.listen(PORT, () => console.log(`Backend running on ${PORT}`));
+
+// Run lead gen on startup (optional - comment out if using cron only)
+// runLeadGen().catch(console.error);
+EOF
+
+      - name: Deploy to Render
+cat > /c/Users/himav/wip-demo/.github/workflows/deploy.yml << 'WORKFLOW_EOF'
+name: Deploy Frontend & Backend
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  BUN_VERSION: '1.1'
+
+jobs:
+  deploy-frontend:
+    name: Deploy Frontend to Vercel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: cd frontend && bun install --frozen-lockfile
+
+      - name: Build frontend
+        run: cd frontend && bun run build
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        if: ${{ secrets.VERCEL_TOKEN != '' }}
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: ./frontend
+
+  deploy-backend:
+    name: Deploy Backend to Render
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install backend dependencies
+        run: |
+          mkdir -p backend
+          cd backend
+          cat > package.json << 'EOF'
+{
+  "name": "wip-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "googleapis": "^140.0.1",
+    "nodemailer": "^6.9.14",
+    "axios": "^1.7.2"
+  }
+}
+EOF
+          npm install
+
+      - name: Create backend server
+        run: |
+          cd backend
+          cat > server.js << 'EOF'
+import express from 'express';
+import cors from 'cors';
+import { createTransport } from 'nodemailer';
+import { google } from 'googleapis';
+import dns from 'dns/promises';
+import axios from 'axios';
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const PORT = process.env.PORT || 3001;
+const GMAIL_USER = process.env.GMAIL_USER;
+const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
+const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
+const GMAIL_REFRESH_TOKEN = process.env.GMAIL_REFRESH_TOKEN;
+const SHEETS_ID = process.env.SHEETS_ID;
+const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+
+const oauth2Client = new google.auth.OAuth2(
+  GMAIL_CLIENT_ID,
+  GMAIL_CLIENT_SECRET
+);
+oauth2Client.setCredentials({ refresh_token: GMAIL_REFRESH_TOKEN });
+
+async function getGmailTransporter() {
+  const { token } = await oauth2Client.getAccessToken();
+  return createTransport({
+    service: 'gmail',
+    auth: { type: 'OAuth2', user: GMAIL_USER, accessToken: token }
+  });
+}
+
+const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
+
+async function appendToSheet(tab, values) {
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SHEETS_ID,
+    range: `${tab}!A:Z`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [values] }
+  });
+}
+
+async function findRowByEmail(tab, email) {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEETS_ID,
+    range: `${tab}!A:Z`
+  });
+  const rows = res.data.values || [];
+  return rows.findIndex(r => r[1] === email);
+}
+
+async function updateSheetRow(tab, rowIndex, values) {
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SHEETS_ID,
+    range: `${tab}!A${rowIndex + 1}:Z${rowIndex + 1}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [values] }
+  });
+}
+
+async function verifyMX(email) {
+  try {
+    const domain = email.split('@')[1];
+    const records = await dns.resolveMx(domain);
+    return records.length > 0;
+  } catch { return false; }
+}
+
+async function searchRestaurants(city, cuisine) {
+  const query = `${cuisine} restaurant ${city} USA`;
+  const { data } = await axios.get('https://maps.googleapis.com/maps/api/place/textsearch/json', {
+    params: { query, key: GOOGLE_MAPS_API_KEY }
+  });
+  return data.results?.slice(0, 10).map(r => ({
+    name: r.name,
+    address: r.formatted_address,
+    place_id: r.place_id,
+    rating: r.rating,
+    reviews: r.user_ratings_total
+  })) || [];
+}
+
+async function getPlaceDetails(placeId) {
+  const { data } = await axios.get('https://maps.googleapis.com/maps/api/place/details/json', {
+    params: {
+      place_id: placeId,
+      fields: 'website,formatted_phone_number',
+      key: GOOGLE_MAPS_API_KEY
+    }
+  });
+  return data.result;
+}
+
+async function extractEmailFromWebsite(url) {
+  try {
+    const { data: html } = await axios.get(url, { timeout: 8000 });
+    const match = html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/i);
+    return match ? match[0] : null;
+  } catch { return null; }
+}
+
+async function sendColdEmail(lead, template) {
+  const transporter = await getGmailTransporter();
+  const trackingPixel = `${process.env.BACKEND_URL}/api/track/open?lead=${encodeURIComponent(lead.email)}`;
+  const trackingLink = `${process.env.BACKEND_URL}/api/track/click?lead=${encodeURIComponent(lead.email)}&url=${encodeURIComponent(process.env.DEMO_URL)}`;
+
+  const html = template
+    .replace('{{name}}', lead.name)
+    .replace('{{business}}', lead.business)
+    .replace('{{city}}', lead.city)
+    .replace('{{tracking_pixel}}', `<img src="${trackingPixel}" width="1" height="1" />`)
+    .replace('{{demo_link}}', `<a href="${trackingLink}">${process.env.DEMO_URL}</a>`);
+
+  await transporter.sendMail({
+    from: `WIP Websites <${GMAIL_USER}>`,
+    to: lead.email,
+    subject: `Cinematic website for ${lead.business} in ${lead.city} — $299`,
+    html
+  });
+}
+
+async function runLeadGen() {
+  const cities = ['Austin', 'Denver', 'Nashville', 'Portland', 'San Diego', 'Miami', 'Charlotte', 'Tampa', 'Phoenix', 'Dallas'];
+  const cuisines = ['italian', 'mexican', 'japanese', 'farm-to-table', 'craft-cocktail'];
+
+  const template = `
+    <p>Hi {{name}},</p>
+    <p>Saw {{business}} in {{city}} — great reviews, solid vibe.</p>
+    <p>We build cinematic restaurant websites that actually convert: $299 (Starter), $499 (Growth), $999 (Premium).</p>
+    <p>See our demo: {{demo_link}} {{tracking_pixel}}</p>
+    <p>Best,<br>WIP Team</p>
+  `;
+
+  for (const city of cities) {
+
+cat > /c/Users/himav/wip-demo/.github/workflows/lead-gen.yml << 'WORKFLOW_EOF'
+name: Daily Lead Generation
+
+on:
+  schedule:
+    - cron: '0 13 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  lead-gen:
+    name: Find & Email Leads
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps
+        run: |
+          mkdir -p backend
+          cd backend
+          cat > package.json << 'EOF'
+{
+  "name": "lead-gen",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "googleapis": "^140.0.1",
+    "nodemailer": "^6.9.14",
+    "axios": "^1.7.2"
+  }
+}
+EOF
+          npm install
+
+      - name: Run Lead Gen
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          SHEETS_ID: ${{ secrets.SHEETS_ID }}
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          DEMO_URL: ${{ secrets.DEMO_URL }}
+        run: |
+          cd backend
+          cat > leadgen.js << 'EOF'
+import { google } from 'googleapis';
+import { createTransport } from 'nodemailer';
+import axios from 'axios';
+import dns from 'dns/promises';
+
+const oauth2Client = new google.auth.OAuth2(
+  process.env.GMAIL_CLIENT_ID,
+  process.env.GMAIL_CLIENT_SECRET
+);
+oauth2Client.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
+
+const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
+
+async function getTransporter() {
+  const { token } = await oauth2Client.getAccessToken();
+  return createTransport({
+    service: 'gmail',
+    auth: { type: 'OAuth2', user: process.env.GMAIL_USER, accessToken: token }
+  });
+}
+
+async function appendToSheet(tab, values) {
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: process.env.SHEETS_ID,
+    range: `${tab}!A:Z`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [values] }
+  });
+}
+
+async function verifyMX(email) {
+  try {
+    const domain = email.split('@')[1];
+    const records = await dns.resolveMx(domain);
+    return records.length > 0;
+  } catch { return false; }
+}
+
+async function searchRestaurants(city, cuisine) {
+  const query = `${cuisine} restaurant ${city} USA`;
+  const { data } = await axios.get('https://maps.googleapis.com/maps/api/place/textsearch/json', {
+    params: { query, key: process.env.GOOGLE_MAPS_API_KEY }
+  });
+  return data.results?.slice(0, 10).map(r => ({
+    name: r.name,
+    address: r.formatted_address,
+    place_id: r.place_id,
+    rating: r.rating,
+    reviews: r.user_ratings_total
+  })) || [];
+}
+
+async function getPlaceDetails(placeId) {
+  const { data } = await axios.get('https://maps.googleapis.com/maps/api/place/details/json', {
+    params: {
+      place_id: placeId,
+      fields: 'website,formatted_phone_number',
+      key: process.env.GOOGLE_MAPS_API_KEY
+    }
+  });
+  return data.result;
+}
+
+async function extractEmailFromWebsite(url) {
+  try {
+    const { data: html } = await axios.get(url, { timeout: 8000 });
+    const match = html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/i);
+    return match ? match[0] : null;
+  } catch { return null; }
+}
+
+async function sendEmail(lead, template) {
+  const transporter = await getTransporter();
+  const pixel = `${process.env.BACKEND_URL}/api/track/open?lead=${encodeURIComponent(lead.email)}`;
+  const link = `${process.env.BACKEND_URL}/api/track/click?lead=${encodeURIComponent(lead.email)}&url=${encodeURIComponent(process.env.DEMO_URL)}`;
+
+  const html = template
+    .replace('{{name}}', lead.name)
+    .replace('{{business}}', lead.business)
+    .replace('{{city}}', lead.city)
+    .replace('{{tracking_pixel}}', `<img src="${pixel}" width="1" height="1" />`)
+    .replace('{{demo_link}}', `<a href="${link}">${process.env.DEMO_URL}</a>`);
+
+  await transporter.sendMail({
+    from: `WIP Websites <${process.env.GMAIL_USER}>`,
+    to: lead.email,
+    subject: `Cinematic website for ${lead.business} in ${lead.city} — $299`,
+    html
+  });
+}
+
+const cities = ['Austin', 'Denver', 'Nashville', 'Portland', 'San Diego', 'Miami', 'Charlotte', 'Tampa', 'Phoenix', 'Dallas'];
+const cuisines = ['italian', 'mexican', 'japanese', 'farm-to-table', 'craft-cocktail'];
+
+const template = `
+  <p>Hi {{name}},</p>
+  <p>Saw {{business}} in {{city}} — great reviews, solid vibe.</p>
+  <p>We build cinematic restaurant websites that actually convert: $299 (Starter), $499 (Growth), $999 (Premium).</p>
+  <p>See our demo: {{demo_link}} {{tracking_pixel}}</p>
+  <p>Best,<br>WIP Team</p>
+`;
+
+for (const city of cities) {
+  for (const cuisine of cuisines) {
+    const places = await searchRestaurants(city, cuisine);
+    for (const place of places) {
+      if ((place.reviews || 0) < 100 || (place.rating || 0) < 4.0) continue;
+      const details = await getPlaceDetails(place.place_id);
+      const website = details?.website;
+      if (!website) continue;
+
+      const email = await extractEmailFromWebsite(website);
+      if (!email || !await verifyMX(email)) continue;
+
+      const lead = {
+        name: place.name.split(' ')[0],
+        business: place.name,
+        city,
+        email,
+        website,
+        phone: details?.formatted_phone_number || '',
+        cuisine
+      };
+
+      await appendToSheet('Leads', [
+        new Date().toISOString(),
+        lead.email,
+        lead.business,
+        lead.city,
+        lead.cuisine,
+        lead.website,
+        lead.phone,
+        'pending'
+      ]);
+
+      try {
+        await sendEmail(lead, template);
+        await appendToSheet('Sent', [
+          new Date().toISOString(),
+          lead.email,
+          lead.business,
+          lead.city,
+          'sent'
+        ]);
+      } catch (err) {
+        console.error('Send failed:', err.message);
+      }
+
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+}
+
+console.log('Lead gen complete');
+EOF
+          node leadgen.js
