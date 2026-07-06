@@ -45,32 +45,32 @@ const MENU_ITEMS = [
   {
     name: 'Truffle Risotto',
     description: 'Arborio rice, black truffle shavings, aged parmesan, finished with truffle oil.',
-    price: '$38',
+    price: '$299',
   },
   {
     name: 'Wagyu Tartare',
     description: 'Hand-cut A5 wagyu, quail egg, capers, cornichons, brioche croûtons.',
-    price: '$45',
+    price: '$499',
   },
   {
     name: 'Lobster Thermidor',
     description: 'Whole Maine lobster, cognac cream, gruyère gratin, roasted fingerling potatoes.',
-    price: '$58',
+    price: '$999',
   },
   {
     name: 'Duck Confit',
     description: 'Slow-cooked Moulard duck leg, cherry gastrique, wilted greens, duck fat potatoes.',
-    price: '$42',
+    price: '$299',
   },
   {
     name: 'Seared Scallops',
     description: 'Diver scallops, cauliflower purée, brown butter, toasted hazelnuts, micro herbs.',
-    price: '$52',
+    price: '$499',
   },
   {
     name: 'Chocolate Soufflé',
     description: 'Valrhona dark chocolate, crème anglaise, cocoa dust, seasonal berry compote.',
-    price: '$18',
+    price: '$299',
   },
 ];
 

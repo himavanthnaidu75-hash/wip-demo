@@ -77,7 +77,7 @@ const rooms = [
   },
   {
     name: 'Executive Suite',
-    price: '$599',
+    price: '$499',
     period: '/night',
     description: 'Spacious living area with dedicated workspace and lounge access.',
     gradient: 'from-amber-800/40 via-yellow-900/50 to-stone-900/70',
