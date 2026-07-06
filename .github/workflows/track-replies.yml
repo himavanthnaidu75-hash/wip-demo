@@ -11,17 +11,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
       - name: Install deps
         run: |
           mkdir -p backend
           cd backend
-          cat > package.json << 'EOF'
+          cat > package.json << 'PKGEOF'
 {
   "name": "track-replies",
   "version": "1.0.0",
@@ -30,9 +28,8 @@ jobs:
     "googleapis": "^140.0.1"
   }
 }
-EOF
+PKGEOF
           npm install
-
       - name: Check Replies
         env:
           GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
@@ -42,7 +39,7 @@ EOF
           SHEETS_ID: ${{ secrets.SHEETS_ID }}
         run: |
           cd backend
-          cat > track.js << 'EOF'
+          cat > track.js << 'JSEOF'
 import { google } from 'googleapis';
 
 const oauth2Client = new google.auth.OAuth2(
@@ -90,15 +87,6 @@ async function logReply(email, snippet) {
   });
 }
 
-async function logConverted(email, value) {
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: SHEETS_ID,
-    range: 'Converted!A:Z',
-    valueInputOption: 'RAW',
-    requestBody: { values: [[new Date().toISOString(), email, value]] }
-  });
-}
-
 const sentRows = await getSentEmails();
 for (let i = 0; i < sentRows.length; i++) {
   const [, email, business, city, status] = sentRows[i];
@@ -115,5 +103,5 @@ for (let i = 0; i < sentRows.length; i++) {
 }
 
 console.log('Reply tracking complete');
-EOF
+JSEOF
           node track.js
