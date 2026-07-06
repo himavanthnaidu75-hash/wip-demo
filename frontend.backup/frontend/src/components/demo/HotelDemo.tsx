@@ -95,7 +95,7 @@ const rooms = [
   },
   {
     name: 'Presidential Suite',
-    price: '$999',
+    price: '$1,299',
     period: '/night',
     description: 'The pinnacle of luxury — private terrace, butler service, and curated art.',
     gradient: 'from-amber-700/30 via-amber-900/40 to-stone-900/60',

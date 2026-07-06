@@ -257,7 +257,7 @@ export default function ElectronicsDemo() {
           <ScrollReveal delay={0.1}>
             <div className="text-center mb-10">
               <p className="text-4xl md:text-5xl font-bold text-white tracking-tight">
-                $999
+                $1,299
               </p>
               <p className="text-white/30 text-sm mt-2">
                 Starting price · Free shipping
