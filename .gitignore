@@ -12,6 +12,8 @@ frontend/node_modules
 frontend/.next
 frontend/.vercel
 frontend/out
+bun.lock
+frontend/bun.lock
 
 # backend specific
 backend/node_modules

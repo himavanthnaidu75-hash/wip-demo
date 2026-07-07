@@ -1,4 +1,4 @@
-name: Deploy Frontend & Backend
+name: Deploy (Frontend + Backend)
 
 on:
   push:
@@ -7,7 +7,8 @@ on:
 
 env:
   NODE_VERSION: '20'
-  BUN_VERSION: '1.1'
+  BUN_VERSION: '1.3.14'
+  RENDER_BACKEND_ID: srv-d96l2b6q1p3s73cujt00
 
 jobs:
   deploy-frontend:
@@ -15,21 +16,16 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HAS_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN != '' && 'true' || 'false' }}
-
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: ${{ env.BUN_VERSION }}
-
       - name: Install dependencies
-        run: cd frontend && bun install --frozen-lockfile
-
+        run: cd frontend && bun install
       - name: Build frontend
         run: cd frontend && bun run build
-
       - name: Deploy to Vercel
         if: ${{ env.HAS_VERCEL_TOKEN == 'true' }}
         uses: amondnet/vercel-action@v25
@@ -41,28 +37,15 @@ jobs:
           working-directory: ./frontend
 
   deploy-backend:
-    name: Deploy Backend to Vercel
+    name: Deploy Backend to Render
     runs-on: ubuntu-latest
     env:
-      HAS_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN != '' && 'true' || 'false' }}
-
+      HAS_RENDER_API_KEY: ${{ secrets.RENDER_API_KEY != '' && 'true' || 'false' }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install backend dependencies
-        run: cd backend && npm install
-
-      - name: Deploy to Vercel
-        if: ${{ env.HAS_VERCEL_TOKEN == 'true' }}
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-          working-directory: ./backend
+      - name: Trigger Render Deploy
+        if: ${{ env.HAS_RENDER_API_KEY == 'true' }}
+        run: |
+          curl -X POST "https://api.render.com/v1/services/${{ env.RENDER_BACKEND_ID }}/deploys" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache":"do_not_clear"}'

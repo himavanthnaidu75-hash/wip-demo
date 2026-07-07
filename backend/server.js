@@ -222,4 +222,9 @@ app.post('/api/webhook/gmail', async (req, res) => {
   res.json({ ok: true });
 });
 
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`WIP backend listening on ${PORT}`);
+});
+
 export default app;
