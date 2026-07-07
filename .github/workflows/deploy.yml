@@ -13,19 +13,26 @@ jobs:
   deploy-frontend:
     name: Deploy Frontend to Vercel
     runs-on: ubuntu-latest
+    env:
+      HAS_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN != '' && 'true' || 'false' }}
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: ${{ env.BUN_VERSION }}
+
       - name: Install dependencies
         run: cd frontend && bun install --frozen-lockfile
+
       - name: Build frontend
         run: cd frontend && bun run build
+
       - name: Deploy to Vercel
+        if: ${{ env.HAS_VERCEL_TOKEN == 'true' }}
         uses: amondnet/vercel-action@v25
-        if: ${{ secrets.VERCEL_TOKEN != '' }}
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
@@ -36,17 +43,23 @@ jobs:
   deploy-backend:
     name: Deploy Backend to Vercel
     runs-on: ubuntu-latest
+    env:
+      HAS_VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN != '' && 'true' || 'false' }}
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+
       - name: Install backend dependencies
         run: cd backend && npm install
+
       - name: Deploy to Vercel
+        if: ${{ env.HAS_VERCEL_TOKEN == 'true' }}
         uses: amondnet/vercel-action@v25
-        if: ${{ secrets.VERCEL_TOKEN != '' }}
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
