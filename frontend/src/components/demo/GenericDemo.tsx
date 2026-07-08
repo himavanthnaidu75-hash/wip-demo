@@ -230,10 +230,21 @@ export default function GenericDemo() {
                     data-cursor="pointer"
                     className="w-full sm:w-auto bg-purple-400 text-[#0a0a0a] font-medium px-6 py-3 rounded-lg text-sm transition-all duration-300 hover:bg-purple-300 hover:shadow-lg hover:shadow-purple-400/20 whitespace-nowrap"
                   >
-                    Get in Touch
-                  </button>
-                </div>
-              </div>
+                     Get in Touch
+                   </button>
+                 </div>
+                 <p className="mt-4 text-xs text-white/20">
+                   Or DM me on{' '}
+                   <a
+                     href="https://instagram.com/work_1n_prgr3ss"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     className="text-purple-400/60 hover:text-purple-400 transition-colors"
+                   >
+                     Instagram @work_1n_prgr3ss
+                   </a>
+                 </p>
+               </div>
             </div>
           </ScrollReveal>
         </div>

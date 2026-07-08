@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import ScrollReveal from '@/components/effects/ScrollReveal';
 import TiltCard from '@/components/effects/TiltCard';
+import ContactCTA from '@/components/ui/contact-cta';
 
 /* ────────────────────────── Animation Variants ────────────────────────── */
 
@@ -446,6 +447,9 @@ export default function RestaurantDemo() {
           </div>
         </div>
       </section>
+
+      {/* ═══════════════════ CTA ═══════════════════ */}
+      <ContactCTA />
 
       {/* ═══════════════════ FOOTER ═══════════════════ */}
       <footer className="mt-auto py-12 px-6 md:px-12 border-t border-white/[0.04]">

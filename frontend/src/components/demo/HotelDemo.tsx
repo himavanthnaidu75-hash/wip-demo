@@ -564,10 +564,21 @@ export default function HotelDemo() {
                       className="group inline-flex items-center gap-3 bg-amber-400 text-[#0a0a0a] font-medium px-8 py-3 rounded-lg text-sm hover:bg-amber-300 transition-all duration-300 shadow-lg shadow-amber-400/10 hover:shadow-amber-400/20"
                     >
                       Check Availability
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
-                    </button>
-                  </div>
-                </form>
+                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
+                     </button>
+                     <p className="mt-4 text-xs text-white/20">
+                       Or DM me on{' '}
+                       <a
+                         href="https://instagram.com/work_1n_prgr3ss"
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         className="text-amber-400/60 hover:text-amber-400 transition-colors"
+                       >
+                         Instagram @work_1n_prgr3ss
+                       </a>
+                     </p>
+                   </div>
+                 </form>
               </div>
             </div>
           </ScrollReveal>

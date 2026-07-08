@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Zap, Shield, Camera, Battery, Wifi, Headphones } from 'lucide-react';
 import ScrollReveal from '@/components/effects/ScrollReveal';
 import TiltCard from '@/components/effects/TiltCard';
+import ContactCTA from '@/components/ui/contact-cta';
 
 const pageVariants = {
   initial: { opacity: 0, y: 30 },
@@ -361,6 +362,8 @@ export default function ElectronicsDemo() {
           </ScrollReveal>
         </div>
       </section>
+
+      <ContactCTA />
     </motion.div>
   );
 }

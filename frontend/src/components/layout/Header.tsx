@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Instagram } from 'lucide-react';
 import { useAppStore } from '@/store/useStore';
 
 export default function Header() {
@@ -35,6 +35,16 @@ export default function Header() {
       </button>
 
       <div className="flex items-center gap-6">
+        <a
+          href="https://instagram.com/work_1n_prgr3ss"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 text-white/40 hover:text-rose transition-colors text-xs tracking-wide"
+          data-cursor="pointer"
+        >
+          <Instagram className="w-4 h-4" />
+          <span className="hidden sm:inline">@work_1n_prgr3ss</span>
+        </a>
         <span className="hidden md:block text-xs tracking-[0.2em] uppercase text-white/30">
           Interactive Demo Studio
         </span>

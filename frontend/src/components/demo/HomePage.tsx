@@ -7,6 +7,7 @@ import CharReveal from '@/components/effects/CharReveal';
 import ScrollReveal from '@/components/effects/ScrollReveal';
 import TiltCard from '@/components/effects/TiltCard';
 import MarqueeTicker from '@/components/effects/MarqueeTicker';
+import ContactCTA from '@/components/ui/contact-cta';
 
 const ICON_MAP: Record<string, React.ElementType> = {
   UtensilsCrossed,
@@ -159,6 +160,9 @@ export default function HomePage() {
           })}
         </div>
       </section>
+
+      {/* CTA */}
+      <ContactCTA />
 
       {/* Marquee */}
       <div className="mt-auto">

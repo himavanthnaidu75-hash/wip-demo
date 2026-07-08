@@ -10,7 +10,25 @@ export const auth = oauth2Client;
 export const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
 export const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
+export async function ensureSheetTab(tab: string) {
+  const res = await sheets.spreadsheets.get({
+    spreadsheetId: process.env.SHEETS_ID,
+  });
+  const exists = res.data.sheets?.some(
+    (s) => s.properties?.title === tab
+  );
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: process.env.SHEETS_ID,
+      requestBody: {
+        requests: [{ addSheet: { properties: { title: tab } } }],
+      },
+    });
+  }
+}
+
 export async function appendToSheet(tab: string, values: unknown[]) {
+  await ensureSheetTab(tab);
   await sheets.spreadsheets.values.append({
     spreadsheetId: process.env.SHEETS_ID,
     range: `${tab}!A:Z`,
