@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
+import InstagramBadge from "@/components/ui/instagram-badge";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +32,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} antialiased bg-cinematic-bg text-white`}>
         {children}
+        <InstagramBadge />
       </body>
     </html>
   );
