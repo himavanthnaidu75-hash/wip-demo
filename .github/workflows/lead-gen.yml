@@ -8,7 +8,7 @@ on:
 
 jobs:
   lead-gen:
-    name: Find & Email Restaurant Leads
+    name: Find & Email Leads (6 Industries)
     runs-on: ubuntu-latest
     timeout-minutes: 30
 

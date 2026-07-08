@@ -1,13 +1,4 @@
-/**
- * Lead Generation Script
- * Searches Google Places for restaurants, extracts emails, sends cold outreach.
- * Runs daily at 6:30 PM IST via GitHub Actions.
- */
-
 import { google } from 'googleapis';
-
-
-// ── Config ─────────────────────────────────────────────────
 
 const CITIES = [
   'New York, NY', 'Los Angeles, CA', 'Chicago, IL',
@@ -15,12 +6,47 @@ const CITIES = [
   'San Antonio, TX', 'San Diego, CA', 'Dallas, TX', 'San Jose, CA',
 ];
 
-const CUISINES = ['Italian', 'Japanese', 'Mexican', 'Indian', 'French'];
+const INDUSTRIES = [
+  { id: 'real_estate',  search: 'real estate agencies',   display: 'Real Estate' },
+  { id: 'gyms',         search: 'gyms and fitness centers', display: 'Gym/Fitness' },
+  { id: 'dental',       search: 'dental clinics',          display: 'Dental/Medical' },
+  { id: 'hotels',       search: 'hotels',                  display: 'Hotel' },
+  { id: 'auto_dealers', search: 'car dealerships',         display: 'Auto Dealer' },
+  { id: 'salons',       search: 'hair salons and spas',    display: 'Salon/Spa' },
+];
 
-const MIN_REVIEWS = 100;
+const MIN_REVIEWS = 50;
 const MIN_RATING = 4.0;
+const MAX_SENDS_PER_RUN = 20;
 
-// ── Auth Helpers ───────────────────────────────────────────
+const INDUSTRY_EMAIL = {
+  real_estate: {
+    subject: (n) => `Modernize ${n || 'your real estate site'} with 3D virtual tours`,
+    hook: (n) => `I came across ${n || 'your agency'} and noticed most real estate sites still rely on static photos. I build immersive 3D walkthroughs that let buyers explore properties from anywhere — and it doubles listing engagement.`,
+  },
+  gyms: {
+    subject: (n) => `A 3D website that sells memberships for ${n || 'your gym'}`,
+    hook: (n) => `I was checking out ${n || 'your fitness center'} — great spot. Most gym websites don't capture the energy of the space. I build interactive 3D virtual tours that show off your facility and convert visitors into members.`,
+  },
+  dental: {
+    subject: (n) => `Give ${n || 'your practice'} a premium digital presence`,
+    hook: (n) => `I saw ${n || 'your clinic'} online — having a modern website builds instant trust with new patients. I create 3D immersive sites with virtual consults, online booking, and that premium feel that sets you apart from competitors.`,
+  },
+  hotels: {
+    subject: (n) => `Make ${n || 'your hotel'} unforgettable online`,
+    hook: (n) => `I looked at ${n || 'your hotel'} — beautiful property. But photos alone don't capture the experience. I build 3D interactive tours that let guests explore rooms, amenities, and the vibe before they book.`,
+  },
+  auto_dealers: {
+    subject: (n) => `Sell more cars with a 3D showroom for ${n || 'your dealership'}`,
+    hook: (n) => `I was looking at ${n || 'your dealership'} — most car sites feel like a catalog. I build interactive 3D showrooms where customers can walk around every vehicle, explore features, and start the buying process without stepping foot on the lot.`,
+  },
+  salons: {
+    subject: (n) => `A website as stunning as ${n || 'your salon'}`,
+    hook: (n) => `I checked out ${n || 'your salon'} — your work speaks for itself. I create 3D immersive websites with online booking, service menus, and virtual tours that make potential clients book before they even walk in.`,
+  },
+};
+
+const PRICING_LINE = `Pricing starts at $299 for a complete site — built in 2 days with 1 year of free updates.`;
 
 function getOAuth2Client() {
   const client = new google.auth.OAuth2(
@@ -40,9 +66,7 @@ function getGmailClient(auth) {
   return google.gmail({ version: 'v1', auth });
 }
 
-// ── Google Places Search ───────────────────────────────────
-
-async function searchRestaurants(city, cuisine) {
+async function searchPlaces(city, industry) {
   const url = new URL('https://places.googleapis.com/v1/places:searchText');
   const response = await fetch(url, {
     method: 'POST',
@@ -52,23 +76,21 @@ async function searchRestaurants(city, cuisine) {
       'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.websiteUri,places.nationalPhoneNumber,places.id',
     },
     body: JSON.stringify({
-      textQuery: `${cuisine} restaurants in ${city}`,
+      textQuery: `${industry.search} in ${city}`,
       maxResultCount: 20,
     }),
   });
 
   if (!response.ok) {
-    console.error(`Places API error for ${city} ${cuisine}:`, response.statusText);
+    console.error(`Places API error for ${city} ${industry.display}:`, response.statusText);
     return [];
   }
 
   const data = await response.json();
   return (data.places || []).filter(
-    (place) => place.userRatingCount >= MIN_REVIEWS && place.rating >= MIN_RATING
+    (place) => (place.userRatingCount || 0) >= MIN_REVIEWS && (place.rating || 0) >= MIN_RATING
   );
 }
-
-// ── Email Extraction (website scraping) ────────────────────
 
 async function extractEmailFromWebsite(websiteUrl) {
   if (!websiteUrl) return null;
@@ -78,13 +100,11 @@ async function extractEmailFromWebsite(websiteUrl) {
       headers: { 'User-Agent': 'Mozilla/5.0' },
     });
     const html = await response.text();
-    // Simple email regex extraction
     const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
     const matches = html.match(emailRegex);
     if (!matches) return null;
 
-    // Filter out common non-contact emails
-    const contactEmail = matches.find(
+    return matches.find(
       (e) =>
         !e.includes('.png') &&
         !e.includes('.jpg') &&
@@ -93,18 +113,13 @@ async function extractEmailFromWebsite(websiteUrl) {
         !e.includes('@example.com') &&
         !e.includes('noreply') &&
         !e.includes('no-reply')
-    );
-    return contactEmail || null;
+    ) || null;
   } catch {
     return null;
   }
 }
 
-// ── MX Record Verification ─────────────────────────────────
-
 async function verifyMxRecord(email) {
-  // Note: In GitHub Actions, we attempt a basic DNS check
-  // using a public DNS-over-HTTPS API
   const domain = email.split('@')[1];
   try {
     const response = await fetch(
@@ -118,8 +133,6 @@ async function verifyMxRecord(email) {
   }
 }
 
-// ── Google Sheets Logging ──────────────────────────────────
-
 async function logToSheets(sheets, sheetId, range, values) {
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetId,
@@ -129,38 +142,39 @@ async function logToSheets(sheets, sheetId, range, values) {
   });
 }
 
-// ── Email Sending ──────────────────────────────────────────
-
 function createTrackingPixel(leadEmail) {
-  const backendUrl = process.env.BACKEND_URL || 'https://wip-demo.vercel.app';
+  const backendUrl = process.env.BACKEND_URL || 'https://wip-demo-backend.onrender.com';
   return `<img src="${backendUrl}/api/track/open?lead=${encodeURIComponent(leadEmail)}" width="1" height="1" style="display:none" />`;
 }
 
 function createClickLink(leadEmail, targetUrl) {
-  const backendUrl = process.env.BACKEND_URL || 'https://wip-demo.vercel.app';
+  const backendUrl = process.env.BACKEND_URL || 'https://wip-demo-backend.onrender.com';
   return `${backendUrl}/api/track/click?lead=${encodeURIComponent(leadEmail)}&url=${encodeURIComponent(targetUrl)}`;
 }
 
-function buildEmailHtml(leadEmail, businessName) {
+function buildEmailHtml(leadEmail, businessName, industryId) {
   const trackingPixel = createTrackingPixel(leadEmail);
   const portfolioLink = createClickLink(leadEmail, 'https://wip-demo.vercel.app');
+  const emailData = INDUSTRY_EMAIL[industryId] || INDUSTRY_EMAIL.real_estate;
 
   return `
 <!DOCTYPE html>
 <html>
 <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
   <div style="max-width: 600px; margin: 0 auto; padding: 24px;">
-    <p>Hi ${businessName || 'there'},</p>
+    <p>Hi there,</p>
 
-    <p>I came across your restaurant and was impressed by the quality of your offerings. I specialize in building modern, cinematic websites for restaurants — think immersive 3D dining experiences, seamless reservation systems, and stunning visual storytelling.</p>
+    <p>${emailData.hook(businessName)}</p>
 
-    <p>Would you be open to a quick chat about how we could help elevate your online presence?</p>
+    <p>${PRICING_LINE}</p>
 
     <p style="margin: 32px 0;">
       <a href="${portfolioLink}" style="background: #d4a574; color: #0a0a0a; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; display: inline-block;">
-        View Our Work
+        See What I Build
       </a>
     </p>
+
+    <p>Open to a quick 15-minute chat this week?</p>
 
     <p>Best regards,<br/>W.I.P Studios</p>
 
@@ -173,9 +187,10 @@ function buildEmailHtml(leadEmail, businessName) {
 </html>`;
 }
 
-async function sendEmail(gmail, to, businessName) {
-  const subject = `Elevate ${businessName || 'your restaurant'}'s online presence`;
-  const htmlBody = buildEmailHtml(to, businessName);
+async function sendEmail(gmail, to, businessName, industryId) {
+  const emailData = INDUSTRY_EMAIL[industryId] || INDUSTRY_EMAIL.real_estate;
+  const subject = emailData.subject(businessName);
+  const htmlBody = buildEmailHtml(to, businessName, industryId);
   const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
 
   const message = [
@@ -206,7 +221,32 @@ async function sendEmail(gmail, to, businessName) {
   }
 }
 
-// ── Main ───────────────────────────────────────────────────
+async function getAlreadyContacted(sheets, sheetId) {
+  try {
+    const sentData = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: 'Sent!B:B',
+    });
+    const leadsData = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: 'Leads!B:B',
+    });
+    const sent = (sentData.data.values || []).map(r => r[0]).filter(Boolean);
+    const leads = (leadsData.data.values || []).map(r => r[0]).filter(Boolean);
+    return new Set([...sent, ...leads]);
+  } catch {
+    return new Set();
+  }
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 async function main() {
   console.log('Starting lead generation...');
@@ -215,51 +255,65 @@ async function main() {
   const gmail = getGmailClient(auth);
   const sheetId = process.env.SHEETS_ID;
 
+  const alreadyContacted = await getAlreadyContacted(sheets, sheetId);
+  console.log(`Already contacted: ${alreadyContacted.size} emails`);
+
   let totalLeads = 0;
   let totalSent = 0;
 
-  for (const city of CITIES) {
-    for (const cuisine of CUISINES) {
-      console.log(`Searching ${cuisine} restaurants in ${city}...`);
+  const combinations = shuffle(
+    CITIES.flatMap(city => INDUSTRIES.map(ind => ({ city, ind })))
+  );
 
-      const places = await searchRestaurants(city, cuisine);
-      console.log(`  Found ${places.length} matching places`);
+  for (const { city, ind } of combinations) {
+    if (totalSent >= MAX_SENDS_PER_RUN) {
+      console.log(`Reached max ${MAX_SENDS_PER_RUN} sends for this run. Stopping.`);
+      break;
+    }
 
-      for (const place of places) {
-        const email = await extractEmailFromWebsite(place.websiteUri);
-        if (!email) continue;
+    console.log(`Searching ${ind.display} in ${city}...`);
+    const places = await searchPlaces(city, ind);
+    console.log(`  Found ${places.length} matching places`);
 
-        const mxValid = await verifyMxRecord(email);
-        if (!mxValid) continue;
+    for (const place of places) {
+      if (totalSent >= MAX_SENDS_PER_RUN) break;
 
-        // Log to Leads tab
-        await logToSheets(sheets, sheetId, 'Leads!A:G', [[
+      const email = await extractEmailFromWebsite(place.websiteUri);
+      if (!email) continue;
+      if (alreadyContacted.has(email)) continue;
+
+      const mxValid = await verifyMxRecord(email);
+      if (!mxValid) continue;
+
+      alreadyContacted.add(email);
+
+      await logToSheets(sheets, sheetId, 'Leads!A:H', [[
+        new Date().toISOString(),
+        email,
+        place.displayName?.text || 'Unknown',
+        ind.display,
+        city,
+        place.websiteUri || '',
+        place.nationalPhoneNumber || '',
+        place.rating || '',
+      ]]);
+      totalLeads++;
+
+      const sent = await sendEmail(gmail, email, place.displayName?.text || '', ind.id);
+      if (sent) {
+        await logToSheets(sheets, sheetId, 'Sent!A:F', [[
           new Date().toISOString(),
           email,
           place.displayName?.text || 'Unknown',
+          'sent',
           city,
-          cuisine,
-          place.websiteUri || '',
-          place.nationalPhoneNumber || '',
+          ind.display,
         ]]);
-        totalLeads++;
-
-        // Send cold email
-        const sent = await sendEmail(gmail, email, place.displayName?.text || '');
-        if (sent) {
-          await logToSheets(sheets, sheetId, 'Sent!A:E', [[
-            new Date().toISOString(),
-            email,
-            place.displayName?.text || 'Unknown',
-            'sent',
-            city,
-          ]]);
-          totalSent++;
-        }
-
-        // Small delay to avoid rate limits
-        await new Promise((r) => setTimeout(r, 1000));
+        totalSent++;
+        console.log(`  ✓ Sent to ${email} (${ind.display})`);
       }
+
+      await new Promise((r) => setTimeout(r, 1500));
     }
   }
 
