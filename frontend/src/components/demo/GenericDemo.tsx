@@ -1,7 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ArrowRight, Rocket, Palette, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowRight, Rocket, Palette, TrendingUp, Loader2, CheckCircle } from 'lucide-react';
 import ScrollReveal from '@/components/effects/ScrollReveal';
 import TiltCard from '@/components/effects/TiltCard';
 
@@ -51,6 +52,29 @@ const stats = [
 ];
 
 export default function GenericDemo() {
+  const [ctaEmail, setCtaEmail] = useState('');
+  const [ctaName, setCtaName] = useState('');
+  const [ctaStatus, setCtaStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  const handleCtaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ctaEmail) return;
+    setCtaStatus('loading');
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: ctaName, email: ctaEmail, message: 'Interested in a demo site' }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      setCtaStatus('success');
+      setCtaEmail('');
+      setCtaName('');
+    } catch {
+      setCtaStatus('error');
+    }
+  };
+
   return (
     <motion.div
       variants={pageVariants}
@@ -209,7 +233,6 @@ export default function GenericDemo() {
         <div className="max-w-7xl mx-auto">
           <ScrollReveal>
             <div className="relative rounded-2xl border border-white/[0.05] bg-white/[0.02] backdrop-blur-sm px-8 py-14 md:py-20 text-center overflow-hidden">
-              {/* Subtle radial glow */}
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(192,132,252,0.04)_0%,transparent_70%)] pointer-events-none" />
 
               <div className="relative z-10">
@@ -220,31 +243,60 @@ export default function GenericDemo() {
                   Let&apos;s build something extraordinary together.
                 </p>
 
-                <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto">
-                  <input
-                    type="email"
-                    placeholder="Enter your email"
-                    className="w-full sm:flex-1 bg-white/[0.03] border border-white/[0.08] rounded-lg px-4 py-3 text-white placeholder:text-white/20 focus:border-purple-400/30 focus:outline-none transition-colors duration-300 text-sm"
-                  />
-                  <button
-                    data-cursor="pointer"
-                    className="w-full sm:w-auto bg-purple-400 text-[#0a0a0a] font-medium px-6 py-3 rounded-lg text-sm transition-all duration-300 hover:bg-purple-300 hover:shadow-lg hover:shadow-purple-400/20 whitespace-nowrap"
+                {ctaStatus === 'success' ? (
+                  <div className="mt-10 flex items-center justify-center gap-3">
+                    <CheckCircle className="w-6 h-6 text-green-400" />
+                    <span className="text-green-400/80 text-sm">Thanks! I&apos;ll reach out soon.</span>
+                  </div>
+                ) : (
+                  <form onSubmit={handleCtaSubmit} className="mt-10 space-y-4 max-w-md mx-auto">
+                    <input
+                      type="text"
+                      placeholder="Your name"
+                      value={ctaName}
+                      onChange={(e) => setCtaName(e.target.value)}
+                      className="w-full bg-white/[0.03] border border-white/[0.08] rounded-lg px-4 py-3 text-white placeholder:text-white/20 focus:border-purple-400/30 focus:outline-none transition-colors duration-300 text-sm"
+                    />
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                      <input
+                        type="email"
+                        required
+                        placeholder="Your email"
+                        value={ctaEmail}
+                        onChange={(e) => setCtaEmail(e.target.value)}
+                        className="w-full sm:flex-1 bg-white/[0.03] border border-white/[0.08] rounded-lg px-4 py-3 text-white placeholder:text-white/20 focus:border-purple-400/30 focus:outline-none transition-colors duration-300 text-sm"
+                      />
+                      <button
+                        type="submit"
+                        disabled={ctaStatus === 'loading'}
+                        data-cursor="pointer"
+                        className="w-full sm:w-auto bg-purple-400 text-[#0a0a0a] font-medium px-6 py-3 rounded-lg text-sm transition-all duration-300 hover:bg-purple-300 hover:shadow-lg hover:shadow-purple-400/20 whitespace-nowrap disabled:opacity-50"
+                      >
+                        {ctaStatus === 'loading' ? (
+                          <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                        ) : (
+                          'Get in Touch'
+                        )}
+                      </button>
+                    </div>
+                    {ctaStatus === 'error' && (
+                      <p className="text-red-400/70 text-xs text-center">Something went wrong. Try Instagram instead.</p>
+                    )}
+                  </form>
+                )}
+
+                <p className="mt-4 text-xs text-white/20">
+                  Or DM me on{' '}
+                  <a
+                    href="https://instagram.com/work_1n_prgr3ss"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-purple-400/60 hover:text-purple-400 transition-colors"
                   >
-                     Get in Touch
-                   </button>
-                 </div>
-                 <p className="mt-4 text-xs text-white/20">
-                   Or DM me on{' '}
-                   <a
-                     href="https://instagram.com/work_1n_prgr3ss"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     className="text-purple-400/60 hover:text-purple-400 transition-colors"
-                   >
-                     Instagram @work_1n_prgr3ss
-                   </a>
-                 </p>
-               </div>
+                    Instagram @work_1n_prgr3ss
+                  </a>
+                </p>
+              </div>
             </div>
           </ScrollReveal>
         </div>
