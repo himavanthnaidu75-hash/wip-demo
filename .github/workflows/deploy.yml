@@ -28,13 +28,11 @@ jobs:
         run: cd frontend && bun run build
       - name: Deploy to Vercel
         if: ${{ env.HAS_VERCEL_TOKEN == 'true' }}
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-          working-directory: ./frontend
+        working-directory: ./frontend
+        run: |
+          npx vercel@latest deploy --prod \
+            --token ${{ secrets.VERCEL_TOKEN }} \
+            --scope ${{ secrets.VERCEL_ORG_ID }}
 
   deploy-backend:
     name: Deploy Backend to Render
