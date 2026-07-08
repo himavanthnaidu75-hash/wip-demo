@@ -51,14 +51,14 @@ export default function ContactCTA() {
             </p>
 
             <a
-              href="https://instagram.com/work_1n_prgr3ss"
+              href="https://instagram.com/work_1n_progr3ss"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 hover:border-rose/30 text-white/80 hover:text-rose transition-all group"
               data-cursor="pointer"
             >
               <Instagram className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              <span className="font-medium">@work_1n_prgr3ss</span>
+              <span className="font-medium">@work_1n_progr3ss</span>
             </a>
           </motion.div>
 

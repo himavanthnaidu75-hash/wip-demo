@@ -288,12 +288,12 @@ export default function GenericDemo() {
                 <p className="mt-4 text-xs text-white/20">
                   Or DM me on{' '}
                   <a
-                    href="https://instagram.com/work_1n_prgr3ss"
+                    href="https://instagram.com/work_1n_progr3ss"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-purple-400/60 hover:text-purple-400 transition-colors"
                   >
-                    Instagram @work_1n_prgr3ss
+                    Instagram @work_1n_progr3ss
                   </a>
                 </p>
               </div>

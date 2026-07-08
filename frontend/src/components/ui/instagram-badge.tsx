@@ -12,7 +12,7 @@ export default function InstagramBadge() {
       className="fixed bottom-6 right-6 z-[60]"
     >
       <a
-        href="https://instagram.com/work_1n_prgr3ss"
+        href="https://instagram.com/work_1n_progr3ss"
         target="_blank"
         rel="noopener noreferrer"
         className="group flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 hover:border-rose/30 hover:bg-rose/10 transition-all shadow-lg shadow-black/20"
@@ -20,7 +20,7 @@ export default function InstagramBadge() {
       >
         <Instagram className="w-4 h-4 text-white/60 group-hover:text-rose transition-colors" />
         <span className="text-xs font-medium text-white/50 group-hover:text-rose/80 transition-colors">
-          @work_1n_prgr3ss
+          @work_1n_progr3ss
         </span>
       </a>
     </motion.div>
