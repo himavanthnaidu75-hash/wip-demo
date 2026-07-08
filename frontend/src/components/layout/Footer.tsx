@@ -5,7 +5,7 @@ export default function Footer() {
     <footer className="mt-auto border-t border-white/5 px-6 md:px-12 py-8">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2 text-white/30 text-sm">
-          <span className="text-rose/60 font-medium">Z.studio</span>
+          <span className="text-rose/60 font-medium">W.I.P Studio</span>
           <span>·</span>
           <span>Cinematic Demo Studio</span>
         </div>

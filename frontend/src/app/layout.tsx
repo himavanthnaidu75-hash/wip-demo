@@ -8,15 +8,15 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Z.studio — Cinematic Interactive Demo Studio",
+  title: "W.I.P Studio — Cinematic Interactive Demo Studio",
   description: "Explore high-end, cinematic interactive demos across multiple industries. Restaurant, Electronics, Hotel, and custom business showcases built with Next.js, Three.js, and Framer Motion.",
   keywords: ["demo studio", "interactive", "cinematic", "3D", "restaurant", "electronics", "hotel", "web design"],
-  authors: [{ name: "Z.studio" }],
+  authors: [{ name: "W.I.P Studio" }],
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },
   openGraph: {
-    title: "Z.studio — Cinematic Demo Studio",
+    title: "W.I.P Studio — Cinematic Demo Studio",
     description: "High-end interactive demos for any business vertical.",
     type: "website",
   },
