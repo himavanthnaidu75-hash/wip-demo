@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import { sendDiscord } from './discord.mjs';
 
 const CITIES = [
   'New York, NY', 'Los Angeles, CA', 'Chicago, IL',
@@ -318,6 +319,11 @@ async function main() {
   }
 
   console.log(`\n✅ Lead gen complete. ${totalLeads} leads found, ${totalSent} emails sent.`);
+  await sendDiscord(
+    `**🤖 Lead Gen Complete**\n` +
+    `**${totalSent}** emails sent | **${totalLeads}** leads logged\n` +
+    `Next run: tomorrow @ 6:30 PM IST`
+  );
 }
 
 main().catch((e) => { console.error('FATAL:', e); process.exit(1); });

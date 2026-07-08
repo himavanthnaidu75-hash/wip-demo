@@ -28,4 +28,5 @@ jobs:
           GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
           SHEETS_ID: ${{ secrets.SHEETS_ID }}
           BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: node .github/scripts/lead-gen.mjs

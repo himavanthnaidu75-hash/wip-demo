@@ -5,6 +5,7 @@
  */
 
 import { google } from 'googleapis';
+import { sendDiscord } from './discord.mjs';
 
 // ── Auth ───────────────────────────────────────────────────
 
@@ -101,6 +102,13 @@ async function main() {
   } while (pageToken);
 
   console.log(`\n✅ Reply check complete. ${replyCount} new replies tracked.`);
+  if (replyCount > 0) {
+    await sendDiscord(
+      `**📬 New Replies!**\n` +
+      `**${replyCount}** new reply/replies found in inbox\n` +
+      `Check the Replied sheet tab for details`
+    );
+  }
 }
 
 main().catch((e) => { console.error('FATAL:', e); process.exit(1); });

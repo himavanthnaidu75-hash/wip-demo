@@ -27,12 +27,20 @@ jobs:
       - name: Build frontend
         run: cd frontend && bun run build
       - name: Deploy to Vercel
+        id: deploy
         if: ${{ env.HAS_VERCEL_TOKEN == 'true' }}
         working-directory: ./frontend
         run: |
-          npx vercel@latest deploy --prod --yes \
+          URL=$(npx vercel@latest deploy --prod --yes \
             --token ${{ secrets.VERCEL_TOKEN }} \
-            --scope ${{ secrets.VERCEL_ORG_ID }}
+            --scope ${{ secrets.VERCEL_ORG_ID }} | tail -1)
+          echo "url=$URL" >> $GITHUB_OUTPUT
+      - name: Notify Discord
+        if: ${{ env.HAS_VERCEL_TOKEN == 'true' }}
+        run: |
+          curl -s -H "Content-Type: application/json" \
+            -d "{\"content\":\"**🚀 Frontend Deployed**\n${{ steps.deploy.outputs.url || 'See Vercel dashboard' }}\"}" \
+            ${{ secrets.DISCORD_WEBHOOK }}
 
   deploy-backend:
     name: Deploy Backend to Render
@@ -47,3 +55,9 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
             -H "Content-Type: application/json" \
             -d '{"clearCache":"do_not_clear"}'
+      - name: Notify Discord
+        if: ${{ env.HAS_RENDER_API_KEY == 'true' }}
+        run: |
+          curl -s -H "Content-Type: application/json" \
+            -d "{\"content\":\"**🖥️ Backend Deploy Triggered**\nRedeploying wip-demo-backend on Render\"}" \
+            ${{ secrets.DISCORD_WEBHOOK }}
