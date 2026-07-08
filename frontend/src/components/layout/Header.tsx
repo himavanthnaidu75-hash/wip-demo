@@ -30,7 +30,7 @@ export default function Header() {
           </motion.div>
         )}
         <span className="text-lg tracking-tight font-medium">
-          <span className="text-rose">Z</span>.studio
+          <span className="text-rose">W.I.P</span> Studio
         </span>
       </button>
 
