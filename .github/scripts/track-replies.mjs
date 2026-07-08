@@ -103,4 +103,4 @@ async function main() {
   console.log(`\n✅ Reply check complete. ${replyCount} new replies tracked.`);
 }
 
-main().catch(console.error);
+main().catch((e) => { console.error('FATAL:', e); process.exit(1); });

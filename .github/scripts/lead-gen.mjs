@@ -266,4 +266,4 @@ async function main() {
   console.log(`\n✅ Lead gen complete. ${totalLeads} leads found, ${totalSent} emails sent.`);
 }
 
-main().catch(console.error);
+main().catch((e) => { console.error('FATAL:', e); process.exit(1); });
