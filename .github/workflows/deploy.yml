@@ -30,7 +30,7 @@ jobs:
         if: ${{ env.HAS_VERCEL_TOKEN == 'true' }}
         working-directory: ./frontend
         run: |
-          npx vercel@latest deploy --prod \
+          npx vercel@latest deploy --prod --yes \
             --token ${{ secrets.VERCEL_TOKEN }} \
             --scope ${{ secrets.VERCEL_ORG_ID }}
 
